@@ -1,0 +1,408 @@
+openapi: 3.0.3
+info:
+  title: Report Service API
+  version: 1.0.0
+  description: API формирования отчётов и статистики соблюдения назначений
+servers:
+- url: http://localhost:8086
+tags:
+- name: Reports
+  description: Отчёты и статистика
+paths:
+  /api/v1/patients/{patientId}/reports/adherence:
+    get:
+      tags:
+      - Reports
+      summary: Получить статистику соблюдения назначений пациента
+      operationId: getPatientAdherence
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Статистика получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdherenceReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/doctors/{doctorId}/reports/patients:
+    get:
+      tags:
+      - Reports
+      summary: Получить сводную статистику по пациентам врача
+      operationId: getDoctorPatientsReports
+      parameters:
+      - name: doctorId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - active
+          - cancelled
+          - completed
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Сводная статистика получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorPatientsReportPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/patients/{patientId}/reports/medication-history:
+    get:
+      tags:
+      - Reports
+      summary: Получить историю приёмов и пропусков
+      operationId: getPatientMedicationHistory
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: История приёмов получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicationHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  schemas:
+    PatientReportProjection:
+      type: object
+      required:
+      - patientId
+      - doctorId
+      - patientDisplayName
+      - updatedAt
+      properties:
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+        patientDisplayName:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    MedicationStatistics:
+      type: object
+      required:
+      - patientId
+      - periodStart
+      - periodEnd
+      - plannedCount
+      - takenCount
+      - missedCount
+      - adherenceRate
+      properties:
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        plannedCount:
+          type: integer
+          minimum: 0
+        takenCount:
+          type: integer
+          minimum: 0
+        missedCount:
+          type: integer
+          minimum: 0
+        adherenceRate:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+    AdherenceReport:
+      type: object
+      required:
+      - statistics
+      - updatedAt
+      properties:
+        statistics:
+          $ref: '#/components/schemas/MedicationStatistics'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Время последнего обновления отчётных данных
+    DoctorPatientReport:
+      type: object
+      required:
+      - patient
+      - statistics
+      properties:
+        patient:
+          $ref: '#/components/schemas/PatientReportProjection'
+        statistics:
+          $ref: '#/components/schemas/MedicationStatistics'
+    DoctorPatientsReportPage:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      - updatedAt
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorPatientReport'
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+          description: Время последнего обновления отчётных данных
+    MedicationHistoryEntry:
+      type: object
+      required:
+      - scheduleEntryId
+      - prescriptionId
+      - patientId
+      - medicineId
+      - scheduledAt
+      - status
+      properties:
+        scheduleEntryId:
+          type: integer
+          format: int64
+          minimum: 1
+        prescriptionId:
+          type: integer
+          format: int64
+          minimum: 1
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        medicineId:
+          type: integer
+          format: int64
+          minimum: 1
+        scheduledAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - taken
+          - missed
+        takenAt:
+          type: string
+          format: date-time
+          nullable: true
+    MedicationHistory:
+      type: object
+      required:
+      - items
+      - updatedAt
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicationHistoryEntry'
+        updatedAt:
+          type: string
+          format: date-time
+          description: Время последнего обновления отчётных данных
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+    Error:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Пользователь не аутентифицирован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Недостаточно прав для просмотра отчёта
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Отчётные данные не найдены
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Внутренняя ошибка сервиса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+- bearerAuth: []

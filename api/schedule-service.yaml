@@ -1,0 +1,366 @@
+openapi: 3.0.3
+info:
+  title: Schedule Service API
+  version: 1.0.0
+  description: API для управления расписанием приёма лекарств.
+servers:
+- url: http://localhost:8084
+  description: Локальный сервер
+tags:
+- name: Schedule
+  description: Операции с расписанием приёма лекарств
+paths:
+  /api/v1/patients/{patientId}/schedule:
+    get:
+      tags:
+      - Schedule
+      summary: Получить расписание пациента за период
+      operationId: getPatientSchedule
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: from
+        in: query
+        required: true
+        description: Начало периода
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        description: Конец периода
+        schema:
+          type: string
+          format: date-time
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - scheduled
+          - taken
+          - missed
+          - cancelled
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Расписание пациента получено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchedulePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/schedule-entries/{scheduleEntryId}:
+    get:
+      tags:
+      - Schedule
+      summary: Получить запись расписания
+      operationId: getScheduleEntry
+      parameters:
+      - name: scheduleEntryId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      responses:
+        '200':
+          description: Запись расписания получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/schedule-entries/{scheduleEntryId}/take:
+    post:
+      tags:
+      - Schedule
+      summary: Отметить лекарство как принятое
+      operationId: markMedicationAsTaken
+      parameters:
+      - name: scheduleEntryId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Ключ идемпотентности для предотвращения повторной обработки запроса
+        schema:
+          type: string
+          minLength: 1
+      responses:
+        '200':
+          description: Приём успешно отмечен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/v1/patients/{patientId}/schedule/summary:
+    get:
+      tags:
+      - Schedule
+      summary: Получить сводку приёмов пациента за период
+      operationId: getPatientScheduleSummary
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: from
+        in: query
+        required: true
+        description: Начало периода
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        description: Конец периода
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: Сводка приёмов получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ScheduleEntry:
+      type: object
+      required:
+      - scheduleEntryId
+      - prescriptionId
+      - patientId
+      - medicineId
+      - scheduledAt
+      - status
+      - createdAt
+      - updatedAt
+      properties:
+        scheduleEntryId:
+          type: integer
+          format: int64
+          minimum: 1
+        prescriptionId:
+          type: integer
+          format: int64
+          minimum: 1
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        medicineId:
+          type: integer
+          format: int64
+          minimum: 1
+        scheduledAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - scheduled
+          - taken
+          - missed
+          - cancelled
+        takenAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SchedulePage:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleEntry'
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+          format: int64
+    ScheduleSummary:
+      type: object
+      required:
+      - patientId
+      - from
+      - to
+      - scheduled
+      - taken
+      - missed
+      - cancelled
+      properties:
+        patientId:
+          type: integer
+          format: int64
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        scheduled:
+          type: integer
+          format: int64
+          description: Количество запланированных приёмов
+        taken:
+          type: integer
+          format: int64
+          description: Количество принятых лекарств
+        missed:
+          type: integer
+          format: int64
+          description: Количество пропущенных приёмов
+        cancelled:
+          type: integer
+          format: int64
+          description: Количество отменённых приёмов
+    Error:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Пользователь не аутентифицирован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Недостаточно прав для выполнения операции
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Запись или пациент не найдены
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Операция конфликтует с текущим состоянием записи
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+security:
+- bearerAuth: []

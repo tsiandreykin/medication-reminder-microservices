@@ -1,0 +1,342 @@
+openapi: 3.0.3
+info:
+  title: Patient Service API
+  description: API для управления пациентами и врачами
+  version: 1.0.0
+servers:
+- url: http://localhost:8081
+tags:
+- name: Patients
+  description: Операции с пациентами
+- name: Doctors
+  description: Операции с врачами
+- name: internal
+  description: Операции, предназначенные для межсервисного взаимодействия
+paths:
+  /api/v1/patients:
+    post:
+      tags:
+      - Patients
+      summary: Зарегистрировать пациента
+      operationId: registerPatient
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientCreate'
+      responses:
+        '201':
+          description: Пациент успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/patients/{patientId}:
+    parameters:
+    - name: patientId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    get:
+      tags:
+      - internal
+      summary: Получить сведения о пациенте
+      operationId: getPatient
+      responses:
+        '200':
+          description: Сведения о пациенте
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags:
+      - Patients
+      summary: Изменить сведения о пациенте
+      operationId: updatePatient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientUpdate'
+      responses:
+        '200':
+          description: Сведения о пациенте обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/doctors/{doctorId}:
+    parameters:
+    - name: doctorId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    get:
+      tags:
+      - internal
+      summary: Получить сведения о враче
+      operationId: getDoctor
+      responses:
+        '200':
+          description: Сведения о враче
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Doctor'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/doctors/{doctorId}/patients:
+    parameters:
+    - name: doctorId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    get:
+      tags:
+      - Doctors
+      summary: Получить список пациентов врача
+      operationId: getDoctorPatients
+      parameters:
+      - name: page
+        in: query
+        description: Номер страницы
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        description: Количество записей на странице
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Список пациентов врача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Ключ идемпотентности для повторных запросов регистрации
+      schema:
+        type: string
+  schemas:
+    Contacts:
+      type: object
+      properties:
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+    Patient:
+      type: object
+      required:
+      - patientId
+      - fullName
+      - birthDate
+      - contacts
+      - doctorId
+      properties:
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        fullName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        contacts:
+          $ref: '#/components/schemas/Contacts'
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+    PatientCreate:
+      type: object
+      required:
+      - fullName
+      - birthDate
+      - contacts
+      - doctorId
+      properties:
+        fullName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        contacts:
+          $ref: '#/components/schemas/Contacts'
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+    PatientUpdate:
+      type: object
+      required:
+      - fullName
+      - birthDate
+      - contacts
+      - doctorId
+      properties:
+        fullName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        contacts:
+          $ref: '#/components/schemas/Contacts'
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+    Doctor:
+      type: object
+      required:
+      - doctorId
+      - fullName
+      - specialization
+      - contacts
+      properties:
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+        fullName:
+          type: string
+        specialization:
+          type: string
+        contacts:
+          $ref: '#/components/schemas/Contacts'
+    PatientPage:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patient'
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+    Error:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Конфликт данных или повторная регистрация
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Отсутствует действительный токен аутентификации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Недостаточно прав для выполнения операции
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+- bearerAuth: []

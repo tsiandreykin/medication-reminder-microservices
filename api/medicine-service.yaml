@@ -1,0 +1,271 @@
+openapi: 3.0.3
+info:
+  title: Medicine Service API
+  description: API для управления справочником лекарственных препаратов
+  version: 1.0.0
+servers:
+- url: http://localhost:8082
+tags:
+- name: Medicines
+  description: Операции со справочником лекарств
+- name: internal
+  description: Операции, предназначенные для межсервисного взаимодействия
+paths:
+  /api/v1/medicines:
+    post:
+      tags:
+      - Medicines
+      summary: Добавить препарат в справочник
+      operationId: createMedicine
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineData'
+      responses:
+        '201':
+          description: Препарат добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicine'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      tags:
+      - Medicines
+      summary: Получить список препаратов
+      operationId: getMedicines
+      parameters:
+      - name: name
+        in: query
+        schema:
+          type: string
+      - name: manufacturer
+        in: query
+        schema:
+          type: string
+      - name: activeSubstance
+        in: query
+        schema:
+          type: string
+      - name: isActive
+        in: query
+        schema:
+          type: boolean
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Список препаратов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicinePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/medicines/{medicineId}:
+    parameters:
+    - name: medicineId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    get:
+      tags:
+      - internal
+      summary: Получить сведения о препарате
+      operationId: getMedicine
+      responses:
+        '200':
+          description: Сведения о препарате
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicine'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags:
+      - Medicines
+      summary: Изменить сведения о препарате
+      operationId: updateMedicine
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineData'
+      responses:
+        '200':
+          description: Сведения о препарате обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicine'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Ключ идемпотентности для повторных запросов создания
+      schema:
+        type: string
+  schemas:
+    Medicine:
+      type: object
+      required:
+      - medicineId
+      properties:
+        medicineId:
+          type: integer
+          format: int64
+          minimum: 1
+        name:
+          type: string
+        manufacturer:
+          type: string
+        description:
+          type: string
+        dosageForm:
+          type: string
+        activeSubstance:
+          type: string
+        isActive:
+          type: boolean
+    MedicinePage:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medicine'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+    MedicineData:
+      type: object
+      properties:
+        name:
+          type: string
+        manufacturer:
+          type: string
+        description:
+          type: string
+        dosageForm:
+          type: string
+        activeSubstance:
+          type: string
+        isActive:
+          type: boolean
+    Error:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Препарат не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Конфликт данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Отсутствует действительный токен аутентификации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Недостаточно прав для выполнения операции
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+- bearerAuth: []

@@ -1,0 +1,358 @@
+openapi: 3.0.3
+info:
+  title: Prescription Service API
+  description: API для управления врачебными назначениями
+  version: 1.0.0
+servers:
+- url: http://localhost:8083
+tags:
+- name: Prescriptions
+  description: Операции с врачебными назначениями
+paths:
+  /api/v1/prescriptions:
+    post:
+      tags:
+      - Prescriptions
+      summary: Создать назначение
+      operationId: createPrescription
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionData'
+      responses:
+        '201':
+          description: Назначение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/prescriptions/{prescriptionId}:
+    parameters:
+    - name: prescriptionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    get:
+      tags:
+      - Prescriptions
+      summary: Получить назначение
+      operationId: getPrescription
+      responses:
+        '200':
+          description: Назначение найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags:
+      - Prescriptions
+      summary: Изменить назначение
+      operationId: updatePrescription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrescriptionData'
+      responses:
+        '200':
+          description: Назначение обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/patients/{patientId}/prescriptions:
+    parameters:
+    - name: patientId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    get:
+      tags:
+      - Prescriptions
+      summary: Получить назначения пациента
+      operationId: getPatientPrescriptions
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - cancelled
+          - completed
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Список назначений пациента
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/prescriptions/{prescriptionId}/cancel:
+    parameters:
+    - name: prescriptionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    post:
+      tags:
+      - Prescriptions
+      summary: Отменить назначение
+      operationId: cancelPrescription
+      responses:
+        '200':
+          description: Назначение отменено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Ключ идемпотентности для повторных запросов создания
+      schema:
+        type: string
+  schemas:
+    Prescription:
+      type: object
+      required:
+      - prescriptionId
+      - patientId
+      - doctorId
+      - medicineId
+      - dosage
+      - frequency
+      - startDate
+      - endDate
+      - status
+      - createdAt
+      - updatedAt
+      properties:
+        prescriptionId:
+          type: integer
+          format: int64
+          minimum: 1
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+        medicineId:
+          type: integer
+          format: int64
+          minimum: 1
+        dosage:
+          type: string
+        frequency:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        instructions:
+          type: string
+        status:
+          type: string
+          enum:
+          - active
+          - cancelled
+          - completed
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PrescriptionData:
+      type: object
+      required:
+      - patientId
+      - doctorId
+      - medicineId
+      - dosage
+      - frequency
+      - startDate
+      - endDate
+      properties:
+        patientId:
+          type: integer
+          format: int64
+          minimum: 1
+        doctorId:
+          type: integer
+          format: int64
+          minimum: 1
+        medicineId:
+          type: integer
+          format: int64
+          minimum: 1
+        dosage:
+          type: string
+        frequency:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        instructions:
+          type: string
+    PrescriptionPage:
+      type: object
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prescription'
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+    Error:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Конфликт данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: Один из зависимых сервисов временно недоступен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Отсутствует действительный токен аутентификации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Недостаточно прав для выполнения операции
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+- bearerAuth: []
